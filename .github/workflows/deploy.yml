@@ -1,0 +1,44 @@
+name: Deploy to Firebase
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+# Never run two deploys at once; let an in-flight deploy finish rather than
+# cancelling it half-way.
+concurrency:
+  group: firebase-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@15.22.2
+
+      # Materialise the service-account JSON from the repo secret. Passed via env
+      # (not interpolated into the command) so it never lands in the process
+      # args; GitHub masks it in logs regardless. The runner is ephemeral, so the
+      # file is destroyed with the VM when the job ends.
+      - name: Write service account key
+        env:
+          SA_KEY: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: printf '%s' "$SA_KEY" > "${RUNNER_TEMP}/sa.json"
+
+      - name: Deploy hosting + Firestore rules/indexes
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ runner.temp }}/sa.json
+        run: firebase deploy --only hosting,firestore --project envasis-e9a56 --non-interactive
