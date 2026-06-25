@@ -1,0 +1,20 @@
+# Firebase
+.firebase/
+firebase-debug.log
+*-debug.log
+.runtimeconfig.json
+
+# Local secrets / env
+.env
+.env.*
+public/js/config.local.js
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node (only if you later add tooling)
+node_modules/
+*.log

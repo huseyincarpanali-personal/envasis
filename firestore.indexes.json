@@ -1,0 +1,21 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "visits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "visitedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "visits",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "destinationId", "order": "ASCENDING" },
+        { "fieldPath": "visitedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

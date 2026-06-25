@@ -1,0 +1,52 @@
+rules_version = '2';
+// Server-side permission model. Tablets sign in as role "user" (read + the two
+// allowed writes); the admin PC signs in as role "admin" (full control).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function role()     { return signedIn() ? userDoc().role : 'none'; }
+    function isAdmin()  { return role() == 'admin'; }
+    // Any active staff member (user or admin).
+    function isStaff()  { return signedIn() && userDoc().active == true; }
+
+    // USERS — admin manages everyone; a user may read only their own profile.
+    match /users/{uid} {
+      allow read:                 if isAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update, delete: if isAdmin();
+    }
+
+    // PRODUCTS — staff read; users may ONLY decrease quantity; admin = full control.
+    match /products/{id} {
+      allow read:           if isStaff();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || ( isStaff()
+             && request.resource.data.diff(resource.data)
+                  .affectedKeys().hasOnly(['quantity', 'updatedAt'])
+             && request.resource.data.quantity is number
+             && request.resource.data.quantity >= 0
+             && request.resource.data.quantity <= resource.data.quantity );
+    }
+
+    // DESTINATIONS — staff read; users may ONLY mark visited; admin = full control.
+    match /destinations/{id} {
+      allow read:           if isStaff();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || ( isStaff()
+             && request.resource.data.diff(resource.data)
+                  .affectedKeys().hasOnly(['lastVisitedAt', 'visitCount']) );
+    }
+
+    // VISITS — append-only history. User sees own; admin sees all.
+    match /visits/{id} {
+      allow read:   if isAdmin() || (isStaff() && resource.data.userId == request.auth.uid);
+      allow create: if isStaff() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+  }
+}
